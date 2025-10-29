@@ -1,0 +1,60 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Brandible Deep Link Test</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f0f2f5;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    h1 {
+      color: #333;
+    }
+    p {
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Brandible Deep Link Test</h1>
+    <p>Attempting to open the Brandible app...</p>
+  </div>
+
+  <script>
+    // Function to get URL parameters
+    function getQueryParam(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    }
+
+    // Get referrer_id and status_id from the URL
+    const referrerId = getQueryParam('referrer_id');
+    const statusId = getQueryParam('status_id');
+
+    if (referrerId && statusId) {
+      // Construct the deep link
+      const deepLink = `brandible://share?referrer_id=${referrerId}&status_id=${statusId}`;
+
+      // Redirect to the deep link
+      window.location = deepLink;
+
+      document.querySelector('p').textContent = `Redirecting to ${deepLink}`;
+    } else {
+      document.querySelector('p').textContent = 'Error: referrer_id and status_id are required in the URL.';
+    }
+  </script>
+</body>
+</html>
