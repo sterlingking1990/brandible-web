@@ -3,11 +3,36 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import styles from '../styles/Share.module.css';
 
+interface MediaData {
+  media_url: string;
+  brand_phone: string;
+  referrer_id: string;
+  status_id: string;
+}
+
+interface StatusData {
+  title: string;
+  description?: string;
+  type: string;
+  reward_amount: number;
+}
+
+interface BrandData {
+  full_name: string;
+  brands?: Array<{
+    company_name?: string;
+    industry?: string;
+    business_phone_number?: string;
+    business_category?: string;
+    business_description?: string;
+  }>;
+}
+
 export default function Share() {
   const router = useRouter();
-  const [mediaData, setMediaData] = useState(null);
-  const [statusData, setStatusData] = useState(null);
-  const [brandData, setBrandData] = useState(null);
+  const [mediaData, setMediaData] = useState<MediaData | null>(null);
+  const [statusData, setStatusData] = useState<StatusData | null>(null);
+  const [brandData, setBrandData] = useState<BrandData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,7 +78,7 @@ export default function Share() {
     } catch (error) {
       console.error('Error fetching data:', error);
       setStatusData({ title: 'Shared Content', description: 'Check out this amazing content!', type: 'status_view', reward_amount: 0 });
-      setBrandData({ full_name: 'Brand', brands: [{ business_name: 'Unknown Brand' }] });
+      setBrandData({ full_name: 'Brand', brands: [{ company_name: 'Unknown Brand' }] });
     } finally {
       setLoading(false);
     }
@@ -67,9 +92,9 @@ export default function Share() {
   };
 
   const handleSignUpOrOpen = () => {
-    const deepLink = `exp://share?referrer_id=${mediaData.referrer_id}&status_id=${mediaData.status_id}`;
-    const appStoreLink = 'https://apps.apple.com/app/brandible'; // Replace with actual
-    const playStoreLink = 'https://play.google.com/store/apps/details?id=com.brandible'; // Replace with actual
+    const deepLink = `brandible://share?referrer_id=${mediaData?.referrer_id}&status_id=${mediaData?.status_id}`;
+    const appStoreLink = 'https://apps.apple.com/app/brandible';
+    const playStoreLink = 'https://play.google.com/store/apps/details?id=com.brandible';
     
     // Try to open app first
     window.location.href = deepLink;
@@ -130,7 +155,7 @@ export default function Share() {
           
           <div className={styles.brandInfo}>
             <h3 className={styles.brandName}>
-              {brand.business_name || brandData.full_name}
+              {brand.company_name || brandData.full_name}
             </h3>
             {brand.business_category && (
               <p className={styles.category}>
