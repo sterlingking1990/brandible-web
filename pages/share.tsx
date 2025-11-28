@@ -351,9 +351,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         brands (
           company_name,
           industry,
-          business_phone_number,
-          business_category,
-          business_description
+          business_phone_number
         )
       `
       )
