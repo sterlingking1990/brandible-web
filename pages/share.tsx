@@ -1,7 +1,7 @@
+import { GetServerSideProps } from 'next';
+import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import Head from 'next/head';
-import { GetServerSideProps } from 'next';
 import { supabase } from '../lib/supabase';
 import styles from '../styles/Share.module.css';
 
@@ -37,27 +37,14 @@ interface SharePageProps {
   mediaData: MediaData | null;
   statusData: StatusData | null;
   brandData: BrandData | null;
-  pageTitle: string;
-  pageDescription: string;
-  pageImage: string;
-  pageUrl: string;
+  initialError?: string;
 }
 
-export default function Share({
-  mediaData: initialMediaData,
-  statusData: initialStatusData,
-  brandData: initialBrandData,
-  pageTitle,
-  pageDescription,
-  pageImage,
-  pageUrl
-}: SharePageProps) {
+export default function Share({ mediaData, statusData, brandData, initialError }: SharePageProps) {
   const router = useRouter();
-  const [mediaData] = useState<MediaData | null>(initialMediaData);
-  const [statusData] = useState<StatusData | null>(initialStatusData);
-  const [brandData] = useState<BrandData | null>(initialBrandData);
+  const [loading, setLoading] = useState(false);
 
-  // Log link click when page loads
+  // Client-side click tracking (unchanged)
   const logLinkClick = async (
     mediaId: string,
     referrerId: string,
@@ -97,7 +84,6 @@ export default function Share({
     }
   };
 
-  // Log WhatsApp message button click
   const logMessageClick = async (
     mediaId: string,
     referrerId: string,
@@ -137,6 +123,7 @@ export default function Share({
     }
   };
 
+  // Client-side click tracking on mount
   useEffect(() => {
     if (mediaData) {
       logLinkClick(
@@ -146,7 +133,7 @@ export default function Share({
         mediaData.brand_id
       );
     }
-  }, []);
+  }, [mediaData]);
 
   const handleMessageBrand = () => {
     if (mediaData?.brand_phone) {
@@ -194,8 +181,11 @@ export default function Share({
       <>
         <Head>
           <title>Brandible - Content Not Found</title>
+          <meta name="description" content="The requested content could not be found" />
         </Head>
-        <div className={styles.error}>Content not found</div>
+        <div className={styles.error}>
+          {initialError || 'Content not found'}
+        </div>
       </>
     );
   }
@@ -207,6 +197,12 @@ export default function Share({
       : statusData.type === 'challenge'
         ? 'Challenge'
         : 'Survey';
+
+  // Meta content - now available immediately for SSR
+  const pageTitle = `${statusData.title} - ${brand.company_name || brandData.full_name} on Brandible`;
+  const pageDescription = statusData.description || `Check out this ${campaignType} from ${brand.company_name || brandData.full_name}. Earn ${statusData.reward_amount} coins!`;
+  const pageImage = mediaData.media_url;
+  const pageUrl = `https://shop.brandiblebms.com/share?media_id=${mediaData.media_id}&referrer_id=${mediaData.referrer_id}&brand_id=${mediaData.brand_id}&status_id=${mediaData.status_id}&brand_phone=${mediaData.brand_phone}`;
 
   return (
     <>
@@ -277,7 +273,8 @@ export default function Share({
                 href={`/${brandData.username}/wall`}
                 className={styles.viewMoreLink}
               >
-                View more from {brand.company_name || brandData.full_name}'s collection
+                View more from {brand.company_name || brandData.full_name}
+                's collection
               </a>
             </div>
           </div>
@@ -300,22 +297,18 @@ export default function Share({
   );
 }
 
-// Server-Side Rendering - This runs on the server before sending HTML
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { media_id, referrer_id, brand_phone, brand_id, status_id } = context.query;
 
-  // If required params are missing, return error state
+  // Validate required parameters
   if (!media_id || !brand_id || !status_id) {
     return {
       props: {
         mediaData: null,
         statusData: null,
         brandData: null,
-        pageTitle: 'Brandible - Content Not Found',
-        pageDescription: 'Content not found',
-        pageImage: '',
-        pageUrl: '',
-      },
+        initialError: 'Missing required parameters'
+      }
     };
   }
 
@@ -324,16 +317,16 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     const { data: media, error: mediaError } = await supabase
       .from('status_media')
       .select('media_url')
-      .eq('id', media_id)
+      .eq('id', media_id as string)
       .single();
 
     if (mediaError) throw mediaError;
 
-    const mediaData = {
+    const mediaData: MediaData = {
       media_id: media_id as string,
       media_url: media.media_url,
-      brand_phone: brand_phone as string,
-      referrer_id: referrer_id as string,
+      brand_phone: (brand_phone as string) || '',
+      referrer_id: (referrer_id as string) || '',
       status_id: status_id as string,
       brand_id: brand_id as string,
     };
@@ -341,7 +334,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     // Fetch status data
     const { data: statusData, error: statusError } = await supabase.rpc(
       'get_public_status_info',
-      { p_status_id: status_id }
+      { p_status_id: status_id as string }
     );
 
     if (statusError) throw statusError;
@@ -364,58 +357,27 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         )
       `
       )
-      .eq('id', brand_id)
+      .eq('id', brand_id as string)
       .single();
 
     if (brandError) throw brandError;
-
-    // Prepare meta content
-    const brand = brandData.brands?.[0] || {};
-    const campaignType =
-      statusData.type === 'status_view'
-        ? 'Ad Campaign'
-        : statusData.type === 'challenge'
-          ? 'Challenge'
-          : 'Survey';
-
-    const pageTitle = `${statusData.title} - ${brand.company_name || brandData.full_name} on Brandible`;
-    const pageDescription = statusData.description || `Check out this ${campaignType} from ${brand.company_name || brandData.full_name}. Earn ${statusData.reward_amount} coins!`;
-    const pageImage = media.media_url;
-    const pageUrl = `https://shop.brandiblebms.com/share?media_id=${media_id}&referrer_id=${referrer_id}&brand_id=${brand_id}&status_id=${status_id}&brand_phone=${brand_phone}`;
 
     return {
       props: {
         mediaData,
         statusData,
         brandData,
-        pageTitle,
-        pageDescription,
-        pageImage,
-        pageUrl,
       },
     };
   } catch (error) {
     console.error('Error in getServerSideProps:', error);
     
-    // Return fallback data
     return {
       props: {
         mediaData: null,
-        statusData: {
-          title: 'Shared Content',
-          description: 'Check out this amazing content!',
-          type: 'status_view',
-          reward_amount: 0,
-        },
-        brandData: {
-          full_name: 'Brand',
-          username: 'brand',
-          brands: [{ company_name: 'Unknown Brand' }],
-        },
-        pageTitle: 'Brandible - Shared Content',
-        pageDescription: 'Check out this content on Brandible!',
-        pageImage: '',
-        pageUrl: '',
+        statusData: null,
+        brandData: null,
+        initialError: 'Failed to load content'
       },
     };
   }
