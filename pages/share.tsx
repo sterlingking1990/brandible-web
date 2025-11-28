@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
+import { GetServerSideProps } from 'next';
 import { supabase } from '../lib/supabase';
 import styles from '../styles/Share.module.css';
 
@@ -32,12 +33,29 @@ interface BrandData {
   }>;
 }
 
-export default function Share() {
+interface SharePageProps {
+  mediaData: MediaData | null;
+  statusData: StatusData | null;
+  brandData: BrandData | null;
+  pageTitle: string;
+  pageDescription: string;
+  pageImage: string;
+  pageUrl: string;
+}
+
+export default function Share({
+  mediaData: initialMediaData,
+  statusData: initialStatusData,
+  brandData: initialBrandData,
+  pageTitle,
+  pageDescription,
+  pageImage,
+  pageUrl
+}: SharePageProps) {
   const router = useRouter();
-  const [mediaData, setMediaData] = useState<MediaData | null>(null);
-  const [statusData, setStatusData] = useState<StatusData | null>(null);
-  const [brandData, setBrandData] = useState<BrandData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [mediaData] = useState<MediaData | null>(initialMediaData);
+  const [statusData] = useState<StatusData | null>(initialStatusData);
+  const [brandData] = useState<BrandData | null>(initialBrandData);
 
   // Log link click when page loads
   const logLinkClick = async (
@@ -79,7 +97,7 @@ export default function Share() {
     }
   };
 
-  // NEW: Log WhatsApp message button click
+  // Log WhatsApp message button click
   const logMessageClick = async (
     mediaId: string,
     referrerId: string,
@@ -120,101 +138,18 @@ export default function Share() {
   };
 
   useEffect(() => {
-    if (router.isReady) {
-      const { media_id, referrer_id, brand_phone, brand_id, status_id } =
-        router.query;
-      if (media_id && brand_id && status_id) {
-        fetchMediaAndBrandData(
-          media_id as string,
-          status_id as string,
-          brand_id as string,
-          referrer_id as string,
-          brand_phone as string
-        );
-      }
-    }
-  }, [router.isReady, router.query]);
-
-  const fetchMediaAndBrandData = async (
-    mediaId: string,
-    statusId: string,
-    brandId: string,
-    referrerId: string,
-    brandPhone: string
-  ) => {
-    try {
-      const { data: media, error: mediaError } = await supabase
-        .from('status_media')
-        .select('media_url')
-        .eq('id', mediaId)
-        .single();
-
-      if (mediaError) throw mediaError;
-
-      const mediaDataObj = {
-        media_id: mediaId,
-        media_url: media.media_url,
-        brand_phone: brandPhone,
-        referrer_id: referrerId,
-        status_id: statusId,
-        brand_id: brandId,
-      };
-
-      setMediaData(mediaDataObj);
-
-      const { data: statusData, error: statusError } = await supabase.rpc(
-        'get_public_status_info',
-        { p_status_id: statusId }
+    if (mediaData) {
+      logLinkClick(
+        mediaData.media_id,
+        mediaData.referrer_id,
+        mediaData.status_id,
+        mediaData.brand_id
       );
-
-      if (statusError) throw statusError;
-      setStatusData(statusData);
-
-      const { data: brandData, error: brandError } = await supabase
-        .from('profiles')
-        .select(
-          `
-          full_name,
-          username,
-          bio,
-          avatar_url,
-          brands (
-            company_name,
-            industry,
-            business_phone_number
-          )
-        `
-        )
-        .eq('id', brandId)
-        .single();
-
-      if (brandError) throw brandError;
-      setBrandData(brandData);
-
-      // Log the link click after all data is fetched
-      logLinkClick(mediaId, referrerId, statusId, brandId);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setStatusData({
-        title: 'Shared Content',
-        description: 'Check out this amazing content!',
-        type: 'status_view',
-        reward_amount: 0,
-      });
-      setBrandData({
-        full_name: 'Brand',
-        username: 'brand',
-        brands: [{ company_name: 'Unknown Brand' }],
-      });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
-  // UPDATED: Log message click before opening WhatsApp
   const handleMessageBrand = () => {
     if (mediaData?.brand_phone) {
-      // Track the message click event
       logMessageClick(
         mediaData.media_id,
         mediaData.referrer_id,
@@ -238,10 +173,8 @@ export default function Share() {
     const playStoreLink =
       'https://play.google.com/store/apps/details?id=com.brandiblebms.app';
 
-    // Try to open app first
     window.location.href = deepLink;
 
-    // Fallback to app store after delay
     setTimeout(() => {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       const isAndroid = /Android/.test(navigator.userAgent);
@@ -251,23 +184,10 @@ export default function Share() {
       } else if (isAndroid) {
         window.open(playStoreLink, '_blank');
       } else {
-        // Desktop - show QR code or download options
         window.open(appStoreLink, '_blank');
       }
     }, 1000);
   };
-
-  if (loading) {
-    return (
-      <>
-        <Head>
-          <title>Brandible - Shared Content</title>
-          <meta name="description" content="Check out this content on Brandible!" />
-        </Head>
-        <div className={styles.loading}>Loading...</div>
-      </>
-    );
-  }
 
   if (!mediaData || !statusData || !brandData) {
     return (
@@ -287,12 +207,6 @@ export default function Share() {
       : statusData.type === 'challenge'
         ? 'Challenge'
         : 'Survey';
-
-  // Prepare meta content
-  const pageTitle = `${statusData.title} - ${brand.company_name || brandData.full_name} on Brandible`;
-  const pageDescription = statusData.description || `Check out this ${campaignType} from ${brand.company_name || brandData.full_name}. Earn ${statusData.reward_amount} coins!`;
-  const pageImage = mediaData.media_url;
-  const pageUrl = `https://shop.brandiblebms.com/share?media_id=${mediaData.media_id}&referrer_id=${mediaData.referrer_id}&brand_id=${mediaData.brand_id}&status_id=${mediaData.status_id}&brand_phone=${mediaData.brand_phone}`;
 
   return (
     <>
@@ -363,8 +277,7 @@ export default function Share() {
                 href={`/${brandData.username}/wall`}
                 className={styles.viewMoreLink}
               >
-                View more from {brand.company_name || brandData.full_name}
-                's collection
+                View more from {brand.company_name || brandData.full_name}'s collection
               </a>
             </div>
           </div>
@@ -386,3 +299,124 @@ export default function Share() {
     </>
   );
 }
+
+// Server-Side Rendering - This runs on the server before sending HTML
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { media_id, referrer_id, brand_phone, brand_id, status_id } = context.query;
+
+  // If required params are missing, return error state
+  if (!media_id || !brand_id || !status_id) {
+    return {
+      props: {
+        mediaData: null,
+        statusData: null,
+        brandData: null,
+        pageTitle: 'Brandible - Content Not Found',
+        pageDescription: 'Content not found',
+        pageImage: '',
+        pageUrl: '',
+      },
+    };
+  }
+
+  try {
+    // Fetch media data
+    const { data: media, error: mediaError } = await supabase
+      .from('status_media')
+      .select('media_url')
+      .eq('id', media_id)
+      .single();
+
+    if (mediaError) throw mediaError;
+
+    const mediaData = {
+      media_id: media_id as string,
+      media_url: media.media_url,
+      brand_phone: brand_phone as string,
+      referrer_id: referrer_id as string,
+      status_id: status_id as string,
+      brand_id: brand_id as string,
+    };
+
+    // Fetch status data
+    const { data: statusData, error: statusError } = await supabase.rpc(
+      'get_public_status_info',
+      { p_status_id: status_id }
+    );
+
+    if (statusError) throw statusError;
+
+    // Fetch brand data
+    const { data: brandData, error: brandError } = await supabase
+      .from('profiles')
+      .select(
+        `
+        full_name,
+        username,
+        bio,
+        avatar_url,
+        brands (
+          company_name,
+          industry,
+          business_phone_number,
+          business_category,
+          business_description
+        )
+      `
+      )
+      .eq('id', brand_id)
+      .single();
+
+    if (brandError) throw brandError;
+
+    // Prepare meta content
+    const brand = brandData.brands?.[0] || {};
+    const campaignType =
+      statusData.type === 'status_view'
+        ? 'Ad Campaign'
+        : statusData.type === 'challenge'
+          ? 'Challenge'
+          : 'Survey';
+
+    const pageTitle = `${statusData.title} - ${brand.company_name || brandData.full_name} on Brandible`;
+    const pageDescription = statusData.description || `Check out this ${campaignType} from ${brand.company_name || brandData.full_name}. Earn ${statusData.reward_amount} coins!`;
+    const pageImage = media.media_url;
+    const pageUrl = `https://shop.brandiblebms.com/share?media_id=${media_id}&referrer_id=${referrer_id}&brand_id=${brand_id}&status_id=${status_id}&brand_phone=${brand_phone}`;
+
+    return {
+      props: {
+        mediaData,
+        statusData,
+        brandData,
+        pageTitle,
+        pageDescription,
+        pageImage,
+        pageUrl,
+      },
+    };
+  } catch (error) {
+    console.error('Error in getServerSideProps:', error);
+    
+    // Return fallback data
+    return {
+      props: {
+        mediaData: null,
+        statusData: {
+          title: 'Shared Content',
+          description: 'Check out this amazing content!',
+          type: 'status_view',
+          reward_amount: 0,
+        },
+        brandData: {
+          full_name: 'Brand',
+          username: 'brand',
+          brands: [{ company_name: 'Unknown Brand' }],
+        },
+        pageTitle: 'Brandible - Shared Content',
+        pageDescription: 'Check out this content on Brandible!',
+        pageImage: '',
+        pageUrl: '',
+      },
+    };
+  }
+};
