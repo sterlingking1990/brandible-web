@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import styles from '../styles/Share.module.css';
 
@@ -232,10 +233,10 @@ export default function Share() {
   };
 
   const handleSignUpOrOpen = () => {
-    const deepLink = `brandible://share?referrer_id=${mediaData?.referrer_id}&status_id=${mediaData?.status_id}&media_id=${mediaData?.media_id}`;
-    const appStoreLink = 'https://apps.apple.com/app/brandible';
+    const deepLink = `brandiblebms://share?referrer_id=${mediaData?.referrer_id}&status_id=${mediaData?.status_id}&media_id=${mediaData?.media_id}`;
+    const appStoreLink = 'https://apps.apple.com/app/brandiblebms';
     const playStoreLink =
-      'https://play.google.com/store/apps/details?id=com.brandible';
+      'https://play.google.com/store/apps/details?id=com.brandiblebms.app';
 
     // Try to open app first
     window.location.href = deepLink;
@@ -257,11 +258,26 @@ export default function Share() {
   };
 
   if (loading) {
-    return <div className={styles.loading}>Loading...</div>;
+    return (
+      <>
+        <Head>
+          <title>Brandible - Shared Content</title>
+          <meta name="description" content="Check out this content on Brandible!" />
+        </Head>
+        <div className={styles.loading}>Loading...</div>
+      </>
+    );
   }
 
   if (!mediaData || !statusData || !brandData) {
-    return <div className={styles.error}>Content not found</div>;
+    return (
+      <>
+        <Head>
+          <title>Brandible - Content Not Found</title>
+        </Head>
+        <div className={styles.error}>Content not found</div>
+      </>
+    );
   }
 
   const brand = brandData.brands?.[0] || {};
@@ -272,66 +288,101 @@ export default function Share() {
         ? 'Challenge'
         : 'Survey';
 
+  // Prepare meta content
+  const pageTitle = `${statusData.title} - ${brand.company_name || brandData.full_name} on Brandible`;
+  const pageDescription = statusData.description || `Check out this ${campaignType} from ${brand.company_name || brandData.full_name}. Earn ${statusData.reward_amount} coins!`;
+  const pageImage = mediaData.media_url;
+  const pageUrl = `https://shop.brandiblebms.com/share?media_id=${mediaData.media_id}&referrer_id=${mediaData.referrer_id}&brand_id=${mediaData.brand_id}&status_id=${mediaData.status_id}&brand_phone=${mediaData.brand_phone}`;
+
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
-        <div className={styles.mediaContainer}>
-          <img
-            src={mediaData.media_url}
-            alt="Shared content"
-            className={styles.media}
-          />
-        </div>
+    <>
+      <Head>
+        {/* Basic Meta Tags */}
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        
+        {/* Open Graph Meta Tags (Facebook, WhatsApp, LinkedIn) */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:image" content={pageImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="Brandible" />
+        
+        {/* Twitter Card Meta Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={pageUrl} />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image" content={pageImage} />
+        
+        {/* Additional Meta Tags */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="canonical" href={pageUrl} />
+      </Head>
 
-        <div className={styles.info}>
-          <h1 className={styles.title}>{statusData.title}</h1>
-
-          <p className={styles.campaignType}>
-            {campaignType} • {statusData.reward_amount} coins reward
-          </p>
-
-          {statusData.description && (
-            <p className={styles.description}>{statusData.description}</p>
-          )}
-
-          <div className={styles.brandInfo}>
-            <h3 className={styles.brandName}>
-              {brand.company_name || brandData.full_name}
-            </h3>
-            {brand.business_category && (
-              <p className={styles.category}>{brand.business_category}</p>
-            )}
-            {brand.business_description && (
-              <p className={styles.brandDescription}>
-                {brand.business_description}
-              </p>
-            )}
+      <div className={styles.container}>
+        <div className={styles.content}>
+          <div className={styles.mediaContainer}>
+            <img
+              src={mediaData.media_url}
+              alt="Shared content"
+              className={styles.media}
+            />
           </div>
 
-          <div className={styles.viewMoreContainer}>
-            <a
-              href={`/${brandData.username}/wall`}
-              className={styles.viewMoreLink}
+          <div className={styles.info}>
+            <h1 className={styles.title}>{statusData.title}</h1>
+
+            <p className={styles.campaignType}>
+              {campaignType} • {statusData.reward_amount} coins reward
+            </p>
+
+            {statusData.description && (
+              <p className={styles.description}>{statusData.description}</p>
+            )}
+
+            <div className={styles.brandInfo}>
+              <h3 className={styles.brandName}>
+                {brand.company_name || brandData.full_name}
+              </h3>
+              {brand.business_category && (
+                <p className={styles.category}>{brand.business_category}</p>
+              )}
+              {brand.business_description && (
+                <p className={styles.brandDescription}>
+                  {brand.business_description}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.viewMoreContainer}>
+              <a
+                href={`/${brandData.username}/wall`}
+                className={styles.viewMoreLink}
+              >
+                View more from {brand.company_name || brandData.full_name}
+                's collection
+              </a>
+            </div>
+          </div>
+
+          <div className={styles.actions}>
+            <button onClick={handleMessageBrand} className={styles.messageBtn}>
+              Message this Brand
+            </button>
+
+            <button
+              onClick={handleSignUpOrOpen}
+              className={styles.signupBtn}
             >
-              View more from {brand.company_name || brandData.full_name}
-              's collection
-            </a>
+              Claim Reward In Brandible App
+            </button>
           </div>
-        </div>
-
-        <div className={styles.actions}>
-          <button onClick={handleMessageBrand} className={styles.messageBtn}>
-            Message this Brand
-          </button>
-
-          <button
-            onClick={handleSignUpOrOpen}
-            className={styles.signupBtn}
-          >
-            Claim Reward In Brandible App
-          </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
