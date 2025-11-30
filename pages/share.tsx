@@ -154,27 +154,28 @@ export default function Share({ mediaData, statusData, brandData, initialError }
     }
   };
 
-  const handleSignUpOrOpen = () => {
-    const deepLink = `brandiblebms://share?referrer_id=${mediaData?.referrer_id}&status_id=${mediaData?.status_id}&media_id=${mediaData?.media_id}`;
-    const appStoreLink = 'https://apps.apple.com/app/brandiblebms';
-    const playStoreLink =
-      'https://play.google.com/store/apps/details?id=com.brandiblebms.app';
+const handleSignUpOrOpen = () => {
+  // Use concatenated format without & separators
+  const deepLink = `brandiblebms://share?mid${mediaData?.media_id}rid${mediaData?.referrer_id}sid${mediaData?.status_id}`;
+  const appStoreLink = 'https://apps.apple.com/app/brandiblebms';
+  const playStoreLink = 'https://play.google.com/store/apps/details?id=com.brandiblebms.app';
 
-    window.location.href = deepLink;
+  console.log('Generated deep link:', deepLink);
+  window.location.href = deepLink;
 
-    setTimeout(() => {
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      const isAndroid = /Android/.test(navigator.userAgent);
+  setTimeout(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
 
-      if (isIOS) {
-        window.open(appStoreLink, '_blank');
-      } else if (isAndroid) {
-        window.open(playStoreLink, '_blank');
-      } else {
-        window.open(appStoreLink, '_blank');
-      }
-    }, 1000);
-  };
+    if (isIOS) {
+      window.open(appStoreLink, '_blank');
+    } else if (isAndroid) {
+      window.open(playStoreLink, '_blank');
+    } else {
+      window.open(appStoreLink, '_blank');
+    }
+  }, 1000);
+};
 
   if (!mediaData || !statusData || !brandData) {
     return (
