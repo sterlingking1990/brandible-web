@@ -156,7 +156,7 @@ export default function Share({ mediaData, statusData, brandData, initialError }
 
 const handleSignUpOrOpen = () => {
   // Use concatenated format without & separators
-  const deepLink = `brandiblebms://share?mid${mediaData?.media_id}rid${mediaData?.referrer_id}sid${mediaData?.status_id}`;
+  const deepLink = `brandible://share?mid${mediaData?.media_id}rid${mediaData?.referrer_id}sid${mediaData?.status_id}`;
   const appStoreLink = 'https://apps.apple.com/app/brandiblebms';
   const playStoreLink = 'https://play.google.com/store/apps/details?id=com.brandiblebms.app';
 
