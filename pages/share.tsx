@@ -58,6 +58,7 @@ export default function Share({ mediaData, statusData, brandData, initialError }
         p_action_type: 'share_link_clicked',
         p_entity_type: 'status_media',
         p_entity_id: mediaId,
+        p_referrer_id: referrerId,
         p_metadata: {
           referrer_id: referrerId,
           status_post_id: statusId,
@@ -97,6 +98,7 @@ export default function Share({ mediaData, statusData, brandData, initialError }
         p_action_type: 'share_message_clicked',
         p_entity_type: 'status_media',
         p_entity_id: mediaId,
+        p_referrer_id: referrerId,
         p_metadata: {
           referrer_id: referrerId,
           status_post_id: statusId,
