@@ -303,6 +303,12 @@ const handleSignUpOrOpen = () => {
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { media_id, referrer_id, brand_phone, brand_id, status_id } = context.query;
 
+  // ✅ ADD THIS: This will show in Vercel logs every time someone clicks the link
+  console.log('Server received request:', { 
+    media_id, 
+    userAgent: context.req.headers['user-agent'] // logs if they are on mobile/desktop
+  });
+
   // Validate required parameters
   if (!media_id || !brand_id || !status_id) {
     return {
