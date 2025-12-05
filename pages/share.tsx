@@ -51,7 +51,13 @@ export default function Share({ mediaData, statusData, brandData, initialError }
     statusId: string,
     brandId: string
   ) => {
+      if (!mediaId || mediaId.length < 30) {
+        console.error('Invalid Media ID, cannot log click');
+        return;
+    }
+    
     try {
+    
       console.log('Attempting to log link click for media:', mediaId);
       
       const { data, error } = await supabase.rpc('log_anonymous_activity', {
@@ -302,12 +308,6 @@ const handleSignUpOrOpen = () => {
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { media_id, referrer_id, brand_phone, brand_id, status_id } = context.query;
-
-  // ✅ ADD THIS: This will show in Vercel logs every time someone clicks the link
-  console.log('Server received request:', { 
-    media_id, 
-    userAgent: context.req.headers['user-agent'] // logs if they are on mobile/desktop
-  });
 
   // Validate required parameters
   if (!media_id || !brand_id || !status_id) {
