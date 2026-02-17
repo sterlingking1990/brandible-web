@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import styles from '../../styles/BrandWall.module.css';
 import Head from 'next/head';
@@ -24,18 +24,51 @@ interface BrandData {
 
 export default function BrandWall() {
   const router = useRouter();
-  const { brandUsername } = router.query;
+  const { brandUsername, mediaId, referrer_id } = router.query;
   const [media, setMedia] = useState<BrandWallMedia[]>([]);
   const [brandData, setBrandData] = useState<BrandData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState<BrandWallMedia | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const mediaRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   useEffect(() => {
     if (brandUsername) {
       fetchBrandDataAndMedia(brandUsername as string);
     }
   }, [brandUsername]);
+
+  // Handle mediaId highlighting and scrolling
+  useEffect(() => {
+    if (mediaId && media.length > 0) {
+      const targetMedia = media.find(item => item.id === mediaId);
+      
+      if (targetMedia && mediaRefs.current[mediaId as string]) {
+        // Scroll to the media item
+        setTimeout(() => {
+          mediaRefs.current[mediaId as string]?.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+          
+          // Add highlight class
+          mediaRefs.current[mediaId as string]?.classList.add(styles.highlighted);
+          
+          // Remove highlight after 3 seconds
+          setTimeout(() => {
+            mediaRefs.current[mediaId as string]?.classList.remove(styles.highlighted);
+          }, 3000);
+
+          // Optionally auto-open the modal for the shared media
+          const index = media.findIndex(item => item.id === mediaId);
+          if (index !== -1) {
+            setSelectedIndex(index);
+            setSelectedMedia(media[index]);
+          }
+        }, 500); // Small delay to ensure DOM is ready
+      }
+    }
+  }, [mediaId, media]);
 
   const fetchBrandDataAndMedia = async (username: string) => {
     try {
@@ -156,6 +189,7 @@ export default function BrandWall() {
               {media.map((item, index) => (
                 <div 
                   key={item.id} 
+                  ref={(el) => mediaRefs.current[item.id] = el}
                   className={styles.gridItem}
                   onClick={() => {
                     setSelectedIndex(index);

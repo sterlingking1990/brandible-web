@@ -438,6 +438,22 @@
   text-align: center;
 }
 
+.highlighted {
+  animation: highlightPulse 2s ease-in-out;
+  border: 3px solid #6C63FF;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.3);
+}
+
+@keyframes highlightPulse {
+  0%, 100% { 
+    box-shadow: 0 4px 20px rgba(108, 99, 255, 0.3);
+  }
+  50% { 
+    box-shadow: 0 8px 30px rgba(108, 99, 255, 0.6);
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .header {
