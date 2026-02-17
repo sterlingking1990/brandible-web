@@ -189,7 +189,7 @@ export default function BrandWall() {
               {media.map((item, index) => (
                 <div 
                   key={item.id} 
-                  ref={(el) => mediaRefs.current[item.id] = el}
+                  ref={(el) => { mediaRefs.current[item.id] = el; }}
                   className={styles.gridItem}
                   onClick={() => {
                     setSelectedIndex(index);
