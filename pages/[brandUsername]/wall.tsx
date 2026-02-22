@@ -38,9 +38,10 @@ export default function BrandWall() {
   const mediaRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
     const handleTikTokEvent = (eventName: string, eventId: string) => {
+    const contentId = Array.isArray(brandUsername) ? brandUsername[0] : brandUsername as string
   // Browser side
   window.ttq?.track(eventName, {
-    content_id: brandUsername,
+    content_id: contentId,
     content_type: 'product',
     event_id: eventId,
   })
