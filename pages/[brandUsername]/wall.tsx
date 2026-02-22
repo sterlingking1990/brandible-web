@@ -1,8 +1,13 @@
+import { v4 as uuidv4 } from 'uuid'
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import styles from '../../styles/BrandWall.module.css';
 import Head from 'next/head';
+
+declare global {
+  interface Window { ttq: any }
+}
 
 interface BrandWallMedia {
   id: string;
@@ -32,10 +37,33 @@ export default function BrandWall() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const mediaRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
+    const handleTikTokEvent = (eventName: string, eventId: string) => {
+  // Browser side
+  window.ttq?.track(eventName, {
+    content_id: brandUsername,
+    content_type: 'product',
+    event_id: eventId,
+  })
+
+  // Server side
+  fetch('/api/tiktok-events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      event_name: eventName,
+      event_id: eventId,
+      brand_username: brandUsername,
+    })
+  })
+}
+
   useEffect(() => {
     if (brandUsername) {
       fetchBrandDataAndMedia(brandUsername as string);
     }
+     // Fire ViewContent when wall loads
+    const eventId = uuidv4()
+    handleTikTokEvent('ViewContent', eventId)
   }, [brandUsername]);
 
   // Handle mediaId highlighting and scrolling
@@ -110,6 +138,10 @@ export default function BrandWall() {
 
   const handleMessageBrand = () => {
     if (brandData?.brands?.[0]?.business_phone_number && selectedMedia) {
+       // Fire Contact event
+    const eventId = uuidv4()
+    handleTikTokEvent('Contact', eventId)
+
       const message = `Hi! I saw this on your Brandible wall and I'm interested to learn more: ${selectedMedia.caption || selectedMedia.media_url}`;
       window.open(`https://wa.me/${brandData.brands[0].business_phone_number}?text=${encodeURIComponent(message)}`, '_blank');
     }
