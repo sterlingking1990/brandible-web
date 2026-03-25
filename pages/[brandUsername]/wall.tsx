@@ -24,6 +24,7 @@ interface BrandData {
   brands?: Array<{
     company_name?: string;
     business_phone_number?: string;
+    id: string;
   }>;
 }
 
@@ -121,19 +122,49 @@ export default function BrandWall() {
       setBrandData(brandData);
 
       if (brandData.brands && brandData.brands.length > 0) {
+        const brandId = brandData.brands[0].id;
         const { data: media, error: mediaError } = await supabase
           .from('brand_wall_media')
           .select('*')
-          .eq('brand_id', brandData.brands[0].id)
+          .eq('brand_id', brandId)
           .order('created_at', { ascending: false });
 
         if (mediaError) throw mediaError;
         setMedia(media);
+
+        // Initial wall visit analytics
+        logBrandAnalytics('wall_visit', brandId);
       }
     } catch (error) {
       console.error('Error fetching brand wall data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const logBrandAnalytics = async (eventType: string, brandId: string, mediaId?: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const payload: any = {
+        brand_id: brandId,
+        event_type: eventType,
+        viewer_id: user?.id || null,
+        referrer_id: referrer_id as string || null,
+        metadata: {
+          path: router.asPath,
+          platform: 'web'
+        }
+      };
+
+      if (mediaId) {
+        payload.media_id = mediaId;
+      }
+
+      await supabase.from('brand_wall_analytics').insert(payload);
+    } catch (error) {
+      // Fail silently to not disrupt user experience
+      console.error('Analytics logging failed:', error);
     }
   };
 
@@ -143,6 +174,9 @@ export default function BrandWall() {
     const eventId = uuidv4()
     handleTikTokEvent('Contact', eventId)
 
+    // Log to Supabase analytics
+    logBrandAnalytics('contact_click', brandData.brands[0].id, selectedMedia.id);
+
       const message = `Hi! I saw this on your Brandible wall and I'm interested to learn more: ${selectedMedia.caption || selectedMedia.media_url}`;
       window.open(`https://wa.me/${brandData.brands[0].business_phone_number}?text=${encodeURIComponent(message)}`, '_blank');
     }
@@ -150,15 +184,25 @@ export default function BrandWall() {
 
   const handleNext = () => {
     if (selectedIndex < media.length - 1) {
+      const nextMedia = media[selectedIndex + 1];
       setSelectedIndex(selectedIndex + 1);
-      setSelectedMedia(media[selectedIndex + 1]);
+      setSelectedMedia(nextMedia);
+      
+      if (brandData?.brands?.[0]?.id) {
+        logBrandAnalytics('media_click', brandData.brands[0].id, nextMedia.id);
+      }
     }
   };
 
   const handlePrev = () => {
     if (selectedIndex > 0) {
+      const prevMedia = media[selectedIndex - 1];
       setSelectedIndex(selectedIndex - 1);
-      setSelectedMedia(media[selectedIndex - 1]);
+      setSelectedMedia(prevMedia);
+
+      if (brandData?.brands?.[0]?.id) {
+        logBrandAnalytics('media_click', brandData.brands[0].id, prevMedia.id);
+      }
     }
   };
 
@@ -227,6 +271,9 @@ export default function BrandWall() {
                   onClick={() => {
                     setSelectedIndex(index);
                     setSelectedMedia(item);
+                    if (brandData?.brands?.[0]?.id) {
+                      logBrandAnalytics('media_click', brandData.brands[0].id, item.id);
+                    }
                   }}
                 >
                   <div className={styles.mediaWrapper}>
