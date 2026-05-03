@@ -12,6 +12,7 @@ interface MediaData {
   referrer_id: string;
   status_id: string;
   brand_id: string;
+  redeem_code?: string;
 }
 
 interface StatusData {
@@ -43,6 +44,15 @@ interface SharePageProps {
 export default function Share({ mediaData, statusData, brandData, initialError }: SharePageProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCode = () => {
+    if (mediaData?.redeem_code) {
+      navigator.clipboard.writeText(mediaData.redeem_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   // Client-side click tracking (unchanged)
   const logLinkClick = async (
@@ -163,6 +173,13 @@ export default function Share({ mediaData, statusData, brandData, initialError }
   };
 
 const handleSignUpOrOpen = () => {
+  if (mediaData?.redeem_code) {
+    // If there's a redeem code, we don't deep link. 
+    // We can either do nothing or redirect to the partners portal.
+    window.open('https://partners.brandiblebms.com', '_blank');
+    return;
+  }
+
   // Use concatenated format without & separators
   const deepLink = `brandible://share?mid${mediaData?.media_id}rid${mediaData?.referrer_id}sid${mediaData?.status_id}`;
   const appStoreLink = 'https://apps.apple.com/app/brandiblebms';
@@ -211,7 +228,7 @@ const handleSignUpOrOpen = () => {
   const pageTitle = `${statusData.title} - ${brand.company_name || brandData.full_name} on Brandible`;
   const pageDescription = statusData.description || `Check out this ${campaignType} from ${brand.company_name || brandData.full_name}. Earn ${statusData.reward_amount} coins!`;
   const pageImage = mediaData.media_url;
-  const pageUrl = `https://shop.brandiblebms.com/share?media_id=${mediaData.media_id}&referrer_id=${mediaData.referrer_id}&brand_id=${mediaData.brand_id}&status_id=${mediaData.status_id}&brand_phone=${mediaData.brand_phone}`;
+  const pageUrl = `https://shop.brandiblebms.com/share?media_id=${mediaData.media_id}&referrer_id=${mediaData.referrer_id}&brand_id=${mediaData.brand_id}&status_id=${mediaData.status_id}&brand_phone=${mediaData.brand_phone}${mediaData.redeem_code ? `&redeem_code=${mediaData.redeem_code}` : ''}`;
 
   return (
     <>
@@ -289,6 +306,18 @@ const handleSignUpOrOpen = () => {
           </div>
 
           <div className={styles.actions}>
+            {mediaData.redeem_code && (
+              <div className={styles.codeSection}>
+                <p className={styles.codeLabel}>Click to copy redeem code</p>
+                <div className={styles.codeWrapper} onClick={handleCopyCode}>
+                  <span className={styles.codeValue}>{mediaData.redeem_code}</span>
+                  <button className={styles.copyBtn}>
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <button onClick={handleMessageBrand} className={styles.messageBtn}>
               Message this Brand
             </button>
@@ -297,8 +326,17 @@ const handleSignUpOrOpen = () => {
               onClick={handleSignUpOrOpen}
               className={styles.signupBtn}
             >
-              Claim Reward In Brandible App
+              {mediaData.redeem_code 
+                ? `Claim reward using this code ${mediaData.redeem_code}` 
+                : 'Claim Reward In Brandible App'
+              }
             </button>
+            
+            {mediaData.redeem_code && (
+              <div className={styles.redeemGuide}>
+                <p><strong>Guide:</strong> Signup if you are a new user or login to <a href="https://partners.brandiblebms.com" target="_blank" rel="noopener noreferrer">partners.brandiblebms.com</a>, go to campaigns, and claim the reward.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -307,7 +345,7 @@ const handleSignUpOrOpen = () => {
 }
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  const { media_id, referrer_id, brand_phone, brand_id, status_id } = context.query;
+  const { media_id, referrer_id, brand_phone, brand_id, status_id, redeem_code } = context.query;
 
   // Validate required parameters
   if (!media_id || !brand_id || !status_id) {
@@ -338,6 +376,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       referrer_id: (referrer_id as string) || '',
       status_id: status_id as string,
       brand_id: brand_id as string,
+      redeem_code: (redeem_code as string) || undefined,
     };
 
     // Fetch status data
